@@ -9,7 +9,6 @@
 
 #include "Image.h"
 #include <iostream>
-#include <bitset>
 using namespace std;
 
 // Constructor and Desctructors

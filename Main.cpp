@@ -24,6 +24,7 @@ using namespace std;
 
 // Global Variables:
 MyImage			inImage;						// image objects
+MyImage			filterImage;
 HINSTANCE		hInst;							// current instance
 TCHAR szTitle[MAX_LOADSTRING];					// The title bar text
 TCHAR szWindowClass[MAX_LOADSTRING];			// The title bar text
@@ -31,6 +32,7 @@ int mode;
 double scale;
 bool alias;
 bool wait = false;
+POINT p;
 
 // Foward declarations of functions included in this code module:
 ATOM				MyRegisterClass(HINSTANCE hInstance);
@@ -68,6 +70,8 @@ int APIENTRY WinMain(HINSTANCE hInstance,
 
 	/*Here starts my code*/
 	vector <string> argv;
+	p.x = 0;
+	p.y = 0;
 	char tok[3] = " \n";
 	char* parsed;
 	parsed = strtok(lpCmdLine, tok);
@@ -107,10 +111,10 @@ int APIENTRY WinMain(HINSTANCE hInstance,
 	/********************/
 	//inImage.setImagePath(lpCmdLine);
 	inImage.ReadImage();
-
+	filterImage = inImage;
 	//inImage.Sample(1, 2);
-	inImage.Antialias(1);
-	inImage.Resize(1);
+	filterImage.Antialias(0);
+	filterImage.Resize(1);
 	// Initialize global strings
 	LoadString(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
 	LoadString(hInstance, IDC_IMAGE, szWindowClass, MAX_LOADSTRING);
@@ -226,14 +230,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	RECT rt;
 	GetClientRect(hWnd, &rt);
 
+
 	switch (message) 
 	{
 		case WM_MOUSEMOVE:
 		{
-			POINT p;
+			
 			GetCursorPos(&p);
 			ScreenToClient(hWnd, &p);
 			cout << p.x << " " << p.y << endl;
+			
+			//InvalidateRect(hWnd, NULL, TRUE);
+			//RedrawWindow(hWnd, &rt, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
+
 			break;
 		}
 		case WM_COMMAND:
@@ -257,31 +266,25 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			break;
 		case WM_PAINT:
 			{
+				MyImage drawImage = filterImage;
 				hdc = BeginPaint(hWnd, &ps);
 				// TO DO: Add any drawing code here...
-				/*char text[1000];
-				strcpy(text, "The original image is shown as follows. \n");
-				DrawText(hdc, text, strlen(text), &rt, DT_LEFT);
-				strcpy(text, "\nUpdate program with your code to modify input image. \n");
-				DrawText(hdc, text, strlen(text), &rt, DT_LEFT);*/
-				/**********/
-				//inImage.Sample(1, 5);
 				/**********/
 				BITMAPINFO bmi;
 				//CBitmap bitmap;
 				memset(&bmi,0,sizeof(bmi));
 				bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
-				bmi.bmiHeader.biWidth = inImage.getWidth();
-				bmi.bmiHeader.biHeight = -inImage.getHeight();  // Use negative height.  DIB is top-down.
+				bmi.bmiHeader.biWidth = drawImage.getWidth();
+				bmi.bmiHeader.biHeight = -drawImage.getHeight();  // Use negative height.  DIB is top-down.
 				bmi.bmiHeader.biPlanes = 1;
 				bmi.bmiHeader.biBitCount = 24;
 				bmi.bmiHeader.biCompression = BI_RGB;
-				bmi.bmiHeader.biSizeImage = inImage.getWidth()*inImage.getHeight();
+				bmi.bmiHeader.biSizeImage = drawImage.getWidth()* drawImage.getHeight();
 
 				SetDIBitsToDevice(hdc,
-								  0,0,inImage.getWidth(),inImage.getHeight(),
-								  0,0,0,inImage.getHeight(),
-								  inImage.getImageData(),&bmi,DIB_RGB_COLORS);
+								  0,0, drawImage.getWidth(), drawImage.getHeight(),
+								  0,0,0, drawImage.getHeight(),
+								  drawImage.getImageData(),&bmi,DIB_RGB_COLORS);
 							   
 				EndPaint(hWnd, &ps);
 			}
