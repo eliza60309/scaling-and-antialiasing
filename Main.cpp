@@ -25,13 +25,14 @@ using namespace std;
 // Global Variables:
 MyImage			inImage;						// image objects
 MyImage			filterImage;
+MyImage			blackImage;
+MyImage			canvas;
 HINSTANCE		hInst;							// current instance
 TCHAR szTitle[MAX_LOADSTRING];					// The title bar text
 TCHAR szWindowClass[MAX_LOADSTRING];			// The title bar text
 int mode;
-double scale;
+double scale = 2;
 bool alias;
-bool wait = false;
 POINT p;
 
 // Foward declarations of functions included in this code module:
@@ -98,7 +99,7 @@ int APIENTRY WinMain(HINSTANCE hInstance,
 		alias = (bool)stoi(argv[3].c_str());
 		cout << mode << " " << scale << " " << alias << endl;
 	}
-	
+	mode = 2; scale = 0.5; alias = 1;
 	/*Here ends my code*/
 	// Set up the images
 	int w = 1920;
@@ -111,10 +112,23 @@ int APIENTRY WinMain(HINSTANCE hInstance,
 	/********************/
 	//inImage.setImagePath(lpCmdLine);
 	inImage.ReadImage();
+	inImage.Resize(0.5);
 	filterImage = inImage;
+
 	//inImage.Sample(1, 2);
-	filterImage.Antialias(0);
-	filterImage.Resize(1);
+	if (alias)
+		filterImage.Antialias(3);
+	filterImage.Resize(scale);
+	if (mode == 1)
+	{
+		canvas = filterImage;
+	}
+	else if (mode == 2)
+	{
+		blackImage = inImage;
+		blackImage.Blackalize(2);
+		canvas = blackImage;
+	}
 	// Initialize global strings
 	LoadString(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
 	LoadString(hInstance, IDC_IMAGE, szWindowClass, MAX_LOADSTRING);
@@ -235,14 +249,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	{
 		case WM_MOUSEMOVE:
 		{
-			
-			GetCursorPos(&p);
-			ScreenToClient(hWnd, &p);
-			cout << p.x << " " << p.y << endl;
-			
-			//InvalidateRect(hWnd, NULL, TRUE);
-			//RedrawWindow(hWnd, &rt, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
-
+			if (mode == 2)
+			{
+				GetCursorPos(&p);
+				ScreenToClient(hWnd, &p);
+				canvas = blackImage;
+				canvas.Magnify(p.x, p.y, 50 * scale, scale, blackImage, filterImage);
+				//InvalidateRect(hWnd, NULL, TRUE);
+				RedrawWindow(hWnd, &rt, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
+			}
 			break;
 		}
 		case WM_COMMAND:
@@ -266,7 +281,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			break;
 		case WM_PAINT:
 			{
-				MyImage drawImage = filterImage;
 				hdc = BeginPaint(hWnd, &ps);
 				// TO DO: Add any drawing code here...
 				/**********/
@@ -274,17 +288,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				//CBitmap bitmap;
 				memset(&bmi,0,sizeof(bmi));
 				bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
-				bmi.bmiHeader.biWidth = drawImage.getWidth();
-				bmi.bmiHeader.biHeight = -drawImage.getHeight();  // Use negative height.  DIB is top-down.
+				bmi.bmiHeader.biWidth = canvas.getWidth();
+				bmi.bmiHeader.biHeight = -canvas.getHeight();  // Use negative height.  DIB is top-down.
 				bmi.bmiHeader.biPlanes = 1;
 				bmi.bmiHeader.biBitCount = 24;
 				bmi.bmiHeader.biCompression = BI_RGB;
-				bmi.bmiHeader.biSizeImage = drawImage.getWidth()* drawImage.getHeight();
+				bmi.bmiHeader.biSizeImage = canvas.getWidth()* canvas.getHeight();
 
 				SetDIBitsToDevice(hdc,
-								  0,0, drawImage.getWidth(), drawImage.getHeight(),
-								  0,0,0, drawImage.getHeight(),
-								  drawImage.getImageData(),&bmi,DIB_RGB_COLORS);
+								  0,0, canvas.getWidth(), canvas.getHeight(),
+								  0,0,0, canvas.getHeight(),
+								  canvas.getImageData(),&bmi,DIB_RGB_COLORS);
 							   
 				EndPaint(hWnd, &ps);
 			}

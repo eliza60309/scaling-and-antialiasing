@@ -9,6 +9,7 @@
 
 #include "Image.h"
 #include <iostream>
+#include <cmath>
 using namespace std;
 
 // Constructor and Desctructors
@@ -23,7 +24,7 @@ MyImage::MyImage()
 MyImage::~MyImage()
 {
 	if ( Data )
-		delete Data;
+		delete []Data;
 }
 
 
@@ -50,6 +51,8 @@ MyImage & MyImage::operator= (const MyImage &otherImage)
 {
 	Height = otherImage.Height;
 	Width  = otherImage.Width;
+	if (Data)
+		delete[]Data;
 	Data   = new char[Width*Height*3];
 	strcpy( (char *)otherImage.ImagePath, ImagePath );
 
@@ -219,57 +222,11 @@ int MyImage::Resize(long double scale)
 			newData[3 * ((i * newWidth) + j) + 2] = oldData[3 * ((int)(i / scale) * Width + (int)(j / scale)) + 2];
 		}
 	}
-	delete Data;
+	delete []Data;
 	Data = newData;
 	Height = newHeight;
 	Width = newWidth;
 	return 0;
-	/*char* source = getImageData();
-	MyImage *filter = new MyImage();
-	filter->setHeight(getHeight());
-	filter->setWidth(getWidth());
-	filter->setImageData(new char[3 * getHeight() * getWidth()]);
-	
-	if (antialias)
-	{
-		int strength = 8;
-		int height = getHeight();
-		int width = getWidth();
-		unsigned int* data = new unsigned int[3 * height * width];
-		unsigned short* weight = new unsigned short[height * width];
-		memset(weight, 0, height * width * sizeof(unsigned short));
-		memset(data, 0, 3 * height * width * sizeof(unsigned int));
-		for (int i = 0; i < height; i++)
-		{
-			for (int j = 0; j < width; j++)
-			{
-				for (int k = i - strength; k <= i + strength; k++)
-				{
-					if (k < 0)continue;
-					if (k >= height)continue;
-					for (int l = j - strength; l <= j + strength; l++)
-					{
-						if (l < 0)continue;
-						if (l >= width)continue;
-						data[3 * ((i * width) + j)] += (unsigned char)source[3 * ((k * width) + l)];
-						data[3 * ((i * width) + j) + 1] += (unsigned char)source[3 * ((k * width) + l) + 1];
-						data[3 * ((i * width) + j) + 2] += (unsigned char)source[3 * ((k * width) + l) + 2];			
-						weight[(i * width) + j]++;
-					}
-				}
-			}
-		}
-		for (int i = 0; i < width * height; i++)
-		{
-			filter->getImageData()[3 * i] = data[3 * i] / weight[i];
-			filter->getImageData()[3 * i + 1] = data[3 * i + 1] / weight[i];
-			filter->getImageData()[3 * i + 2] = data[3 * i + 2] / weight[i];
-		}
-	}
-	else
-		*filter = *this;
-
-	return *filter;*/
 }
 
 int MyImage::Antialias(int level)
@@ -311,7 +268,7 @@ int MyImage::Antialias(int level)
 	return 0;
 }
 
-int MyImage::Sample(int sampleid, int args)
+int MyImage::SampleImg(int sampleid, int args)
 {
 	switch (sampleid)
 	{
@@ -342,7 +299,7 @@ int MyImage::Sample(int sampleid, int args)
 			}
 			break;
 		}
-		case 2:
+		case 2://white box at the corner, args = edge length;
 		{
 			for (int i = 0; i < getHeight(); i++)
 			{
@@ -367,5 +324,44 @@ int MyImage::Sample(int sampleid, int args)
 		default:
 			break;
 	}
+	return 0;
+}
+
+int MyImage::Magnify(int x, int y, int size, double scale, MyImage &background, MyImage &filter)
+{
+	for (int i = 0; i < Height; i++)
+	{
+		for (int j = 0; j < Width; j++)
+		{
+			if (sqrt((i - y) * (i - y) + (j - x) * (j - x)) <= size * scale)
+			{
+				if (j - x + (int)(x * scale) < 0 || j - x + (int)(x * scale) >= Width * scale || i - y + (int)(y * scale) < 0 || i - y + (int)(y * scale) >= Height * scale)
+				{
+					Data[3 * ((i * Width) + j)] = 0;
+					Data[3 * ((i * Width) + j) + 1] = 0;
+					Data[3 * ((i * Width) + j) + 2] = 0;
+				}
+				else
+				{
+					Data[3 * ((i * Width) + j)] = filter.getImageData()[3 * ((int)(y * scale) * (int)(Width * scale) + (int)(x * scale) + ((i - y) * (int)(Width * scale) + (j - x)))];
+					Data[3 * ((i * Width) + j) + 1] = filter.getImageData()[3 * ((int)(y * scale) * (int)(Width * scale) + (int)(x * scale) + ((i - y) * (int)(Width * scale) + (j - x))) + 1];
+					Data[3 * ((i * Width) + j) + 2] = filter.getImageData()[3 * ((int)(y * scale) * (int)(Width * scale) + (int)(x * scale) + ((i - y) * (int)(Width * scale) + (j - x))) + 2];
+				}
+			}
+			else
+			{
+				Data[3 * ((i * Width) + j)] = background.getImageData()[3 * ((i * Width) + j)];
+				Data[3 * ((i * Width) + j) + 1] = background.getImageData()[3 * ((i * Width) + j) + 1];
+				Data[3 * ((i * Width) + j) + 2] = background.getImageData()[3 * ((i * Width) + j) + 2];
+			}
+		}
+	}
+	return 0;
+}
+
+int MyImage::Blackalize(double fraction)
+{
+	for (int i = 0; i < 3 * Width * Height; i++)
+		Data[i] = (unsigned char)Data[i] / fraction;
 	return 0;
 }

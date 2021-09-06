@@ -65,8 +65,9 @@ public:
 	bool	Modify();
 	int Resize(long double);
 	int Antialias(int);
-	int Sample(int, int);
-
+	int SampleImg(int, int);
+	int Magnify(int, int, int, double, MyImage &, MyImage &);
+	int Blackalize(double);
 };
 
 #endif //IMAGE_DISPLAY
